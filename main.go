@@ -14,8 +14,5 @@ func main() {
   check(err)
 
   go httpHnadler(fname)
-  go mqttCloudHandler()
-
-  for {
-  }
+  mqttService()
 }
