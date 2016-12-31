@@ -2,26 +2,14 @@ package main
 
 import (
   "os"
-  "io"
   "fmt"
-  "time"
-  "flag"
   "bytes"
   "strings"
-  "io/ioutil"
-  "encoding/json"
 
   MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
-type config struct {
-  Device string `json:"device"`
-  Id string `json:"id"`
-  Key string `json:"key"`
-}
-
 const (
-  configFile = "./config.json"
   cloudUrl = "tcp://mqtt.thingspeak.com:1883"
   cloudId = "go-cloud"
   localUrl = "tcp://127.0.0.1:1883"
@@ -31,43 +19,26 @@ const (
 )
 
 var (
-  messages chan string
-  configMaps map[string]config
-  // Flag for argument input
-  configDir = flag.String("config", "./config.json", "dir to config file")
+  mqttChan chan string
 )
-
-func check(e error) {
-  if e != nil {
-      panic(e)
-  }
-}
-
-func filePrefix() string {
-	ts := time.Now().Format("2006-01-02-15:04:05.00")
-	ts = strings.Replace(ts, ".", ":", 1)
-	return ts
-}
 
 // Define a function for the default message handler
 var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
   fmt.Printf("Received: TOPIC: %s, MSG: %s\n", msg.Topic(), msg.Payload())
 
-  // Write incoming data to file
   var buffer bytes.Buffer
-  buffer.WriteString(filePrefix())
-  buffer.WriteString(",")
   buffer.Write(msg.Payload())
-  buffer.WriteString("\n")
-  n3, err := localFile.Write(buffer.Bytes())
-  _ = n3
-  check(err)
-  localFile.Sync()
+  s := strings.Split(buffer.String(), ",")
+
+  // Check the device is existed in config
+  if _, ok := configMaps[s[0]]; !ok {
+    fmt.Printf("Device: %s is not found!!\n", s[0])
+    return
+  }
 
   // Update new data
-  buffer.Reset()
-  buffer.Write(msg.Payload())
-  messages <- buffer.String()
+  mqttChan <- buffer.String()
+  mainChan <- buffer.String()
 }
 
 func mqttClientMaker(url string, id string) MQTT.Client {
@@ -116,39 +87,14 @@ func setTopic(id string, key string) string {
   return s
 }
 
-func setConfigMaps(file string) map[string]config {
-  var c config
-  maps := make(map[string]config)
-
-  jsonData, e := ioutil.ReadFile(file)
-  if e != nil {
-      check(e)
-      os.Exit(1)
-  }
-
-  jsonParser := json.NewDecoder(bytes.NewReader(jsonData))
-  for {
-    if err := jsonParser.Decode(&c); err == io.EOF {
-      break
-    } else if err != nil {
-      check(e)
-    }
-    maps[c.Device] = c
-  }
-
-  fmt.Println("maps:", maps)
-  return maps
-}
-
 func mqttService() {
-  configMaps = setConfigMaps(configFile)
-  messages = make(chan string)
+  mqttChan = make(chan string)
   cloudCli := mqttClientMaker(cloudUrl, cloudId)
   localCli := mqttClientMaker(localUrl, localId)
 
   setSubscriber(localCli, localDataTopic, f)
 
   for {
-    setPublisher(cloudCli, <- messages)
+    setPublisher(cloudCli, <- mqttChan)
   }
 }

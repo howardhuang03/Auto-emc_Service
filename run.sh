@@ -2,7 +2,7 @@
 
 TARGET=server
 
-rm -v $TARGET *.csv
+rm -vr $TARGET emc*
 env GOOS=darwin GOARCH=386|grep GO
 go build -o $TARGET
 
