@@ -2,19 +2,28 @@ package main
 
 import (
   "os"
+  "io"
   "fmt"
   "time"
+  "flag"
   "bytes"
   "strings"
+  "io/ioutil"
+  "encoding/json"
 
   MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
+type config struct {
+  Device string `json:"device"`
+  Id string `json:"id"`
+  Key string `json:"key"`
+}
+
 const (
+  configFile = "./config.json"
   cloudUrl = "tcp://mqtt.thingspeak.com:1883"
   cloudId = "go-cloud"
-  channelId = "XXXXX"
-  channelKey = "XXXXX"
   localUrl = "tcp://127.0.0.1:1883"
   localId = "go-local"
   localDataTopic = "channels/local/data"
@@ -23,6 +32,9 @@ const (
 
 var (
   messages chan string
+  configMaps map[string]config
+  // Flag for argument input
+  configDir = flag.String("config", "./config.json", "dir to config file")
 )
 
 func check(e error) {
@@ -78,13 +90,15 @@ func setSubscriber(c MQTT.Client, topic string, f MQTT.MessageHandler) {
   }
 }
 
-func setPublisher(c MQTT.Client, topic string, msg string) {
+func setPublisher(c MQTT.Client, msg string) {
   var buf bytes.Buffer
 
   // Build thingspeak data string
   s := strings.Split(msg, ",")
+  topic := setTopic(configMaps[s[0]].Id, configMaps[s[0]].Key)
   for i := range s {
-    tmp := fmt.Sprintf("field%d=%s", i + 1, s[i])
+    if (i == 0) {continue} // Skip device name
+    tmp := fmt.Sprintf("field%d=%s", i, s[i])
     buf.WriteString(tmp)
     if i != cap(s) - 1 {
       buf.WriteString("&")
@@ -102,17 +116,39 @@ func setTopic(id string, key string) string {
   return s
 }
 
+func setConfigMaps(file string) map[string]config {
+  var c config
+  maps := make(map[string]config)
+
+  jsonData, e := ioutil.ReadFile(file)
+  if e != nil {
+      check(e)
+      os.Exit(1)
+  }
+
+  jsonParser := json.NewDecoder(bytes.NewReader(jsonData))
+  for {
+    if err := jsonParser.Decode(&c); err == io.EOF {
+      break
+    } else if err != nil {
+      check(e)
+    }
+    maps[c.Device] = c
+  }
+
+  fmt.Println("maps:", maps)
+  return maps
+}
+
 func mqttService() {
+  configMaps = setConfigMaps(configFile)
   messages = make(chan string)
   cloudCli := mqttClientMaker(cloudUrl, cloudId)
   localCli := mqttClientMaker(localUrl, localId)
 
   setSubscriber(localCli, localDataTopic, f)
 
-  topic := setTopic(channelId, channelKey)
-
   for {
-    msg := <- messages
-    setPublisher(cloudCli, topic, msg)
+    setPublisher(cloudCli, <- messages)
   }
 }
