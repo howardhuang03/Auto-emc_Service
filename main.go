@@ -84,7 +84,7 @@ func setConfigMaps(file string) map[string]config {
       fmt.Println("Mkdir %s failed: %v", c.Device, err)
     }
 
-    fname := fmt.Sprintf("%s/%s.csv", c.Device, filePrefix())
+    fname := fmt.Sprintf("%s/%s.csv", c.Device, time.Now().Format("20060102"))
     file, err := os.Create(fname)
     if err != nil {
       fmt.Println("create %s fail, err: %v", fname, err);

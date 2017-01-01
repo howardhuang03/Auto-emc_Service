@@ -3,7 +3,13 @@
 TARGET=server
 
 rm -vr $TARGET emc*
-env GOOS=darwin GOARCH=386|grep GO
+
+export GOOS=windows
+export GOARCH=386
+go build -o $TARGET.exe
+cp $TARGET.exe ~/Dropbox/tmp/server/
+export GOOS=darwin
+export GOARCH=amd64
 go build -o $TARGET
 
 if [ -f "$TARGET" ]; then
