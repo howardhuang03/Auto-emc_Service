@@ -12,7 +12,7 @@ do
 	go build -o $WIN_TARGET
 done
 echo "$WIN_TARGET build success, next step..."
-cp $WIN_TARGET.exe ~/Dropbox/tmp/server/
+cp $WIN_TARGET ~/Dropbox/tmp/server/
 
 export GOOS=darwin
 export GOARCH=amd64
