@@ -17,7 +17,7 @@ const (
   localDataTopic = "channels/local/data"
   localCmdTopic = "channels/local/cmd"
   cloudUpdateCount = 2  // cloudUpdateCount * 5min
-  dataSaveCount = 5  // dataSaveCount * 5min
+  dataSaveCount = 12  // dataSaveCount * 5min
 )
 
 var (
