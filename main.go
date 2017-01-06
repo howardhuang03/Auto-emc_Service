@@ -19,6 +19,10 @@ type config struct {
   localFile string
 }
 
+const (
+  version = "1.0.0"
+)
+
 var (
   configMaps map[string]config
   mainChan chan string
@@ -103,6 +107,8 @@ func setConfigMaps(file string) map[string]config {
 func main() {
   mainChan = make(chan string)
   configMaps = setConfigMaps(*configDir)
+
+  fmt.Printf("emc service start, version: %s\n", version)
 
   fname := "tmp" // FIXME
   go httpHnadler(fname)
