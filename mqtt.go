@@ -17,7 +17,7 @@ const (
   localDataTopic = "channels/local/data"
   localCmdTopic = "channels/local/cmd"
   cloudUpdateCount = 2  // cloudUpdateCount * 5min
-  dataSaveCount = 12  // dataSaveCount * 5min
+  dataSaveCount = 2  // dataSaveCount * 5min
 )
 
 var (
@@ -62,14 +62,25 @@ func mqttClientMaker(url string, id string) MQTT.Client {
 
   c := MQTT.NewClient(opts)
   if token := c.Connect(); token.Wait() && token.Error() != nil {
-    panic(token.Error())
+    fmt.Printf("mqtt client build fail, url: %s, id: %s\n", url, id)
+    fmt.Println(token.Error())
+    // Return an empty client
+    c = nil
+  } else {
+    fmt.Printf("mqtt client build success, url: %s, id: %s\n", url, id)
   }
 
   return c
 }
 
 func setSubscriber(c MQTT.Client, topic string, f MQTT.MessageHandler) {
+  if c == nil {
+    fmt.Printf("Can't use empty client to create subscriber: %s\n", topic)
+    return
+  }
+
   if token := c.Subscribe(topic, 0, f); token.Wait() && token.Error() != nil {
+    fmt.Printf("Create subscriber error, topic: %s\n", topic)
     fmt.Println(token.Error())
     os.Exit(1)
   }
@@ -77,6 +88,11 @@ func setSubscriber(c MQTT.Client, topic string, f MQTT.MessageHandler) {
 
 func setPublisher(c MQTT.Client, msg string) {
   var buf bytes.Buffer
+
+  if c == nil {
+    fmt.Printf("Can't use empty client to send msg:%s to cloud\n", msg)
+    return
+  }
 
   // Build thingspeak data string
   s := strings.Split(msg, ",")
