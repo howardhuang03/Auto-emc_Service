@@ -99,10 +99,10 @@ func setPublisher(c MQTT.Client, msg string) {
   topic := setTopic(configMaps[s[0]].Id, configMaps[s[0]].Key)
   for i := range s {
     if (i == 0) {continue} // Skip device name
-    tmp := fmt.Sprintf("field%d=%s", i, s[i])
-    buf.WriteString(tmp)
-    if i != cap(s) - 1 {
-      buf.WriteString("&")
+    if (s[i] != "0") { // Skip zero value
+      tmp := fmt.Sprintf("field%d=%s", i, s[i])
+      buf.WriteString(tmp)
+      if i != cap(s) - 1 {buf.WriteString("&")}
     }
   }
 
