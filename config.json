@@ -1,10 +1,12 @@
 {
-  "device": "emc00",
+  "device": "EMC00",
   "id": "xxxxx",
-  "key": "xxxxx"
+  "key": "xxxxx",
+  "Interval": 2
 }
 {
-  "device": "emc01",
+  "device": "EMC01",
   "id": "xxxxx",
-  "key": "xxxxx"
+  "key": "xxxxx",
+  "Interval": 2
 }

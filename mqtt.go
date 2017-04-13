@@ -16,14 +16,10 @@ const (
   localId = "go-local"
   localDataTopic = "channels/local/data"
   localCmdTopic = "channels/local/cmd"
-  cloudUpdateCount = 2  // cloudUpdateCount * 5min
-  dataSaveCount = 2  // dataSaveCount * 5min
 )
 
 var (
   mqttChan chan string
-  cloudCount int
-  dataCount int
 )
 
 // Define a function for the default message handler
@@ -33,8 +29,6 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
   var buffer bytes.Buffer
   buffer.Write(msg.Payload())
   s := strings.Split(buffer.String(), ",")
-  cloudCount++
-  dataCount++
 
   // Check the device is existed in config
   if _, ok := configMaps[s[0]]; !ok {
@@ -42,17 +36,18 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
     return
   }
 
-  // Update data to cloud once meet the limit
-  if (cloudCount == cloudUpdateCount) {
+  // Increse the count for update and write file
+  m := devConfMaps[s[0]]
+  m.Count++
+
+  // Update data to cloud and save data to file once meet the limit
+  if (m.Count == configMaps[s[0]].Interval) {
     mqttChan <- buffer.String()
-    cloudCount = 0
+    mainChan <- buffer.String()
+    m.Count = 0
   }
 
-  // Save data to file once meet the limit
-  if (dataCount == dataSaveCount) {
-    mainChan <- buffer.String()
-    dataCount = 0
-  }
+  devConfMaps[s[0]] = m
 }
 
 func mqttClientMaker(url string, id string) MQTT.Client {
@@ -121,8 +116,6 @@ func mqttService() {
   mqttChan = make(chan string)
   cloudCli := mqttClientMaker(cloudUrl, cloudId)
   localCli := mqttClientMaker(localUrl, localId)
-  cloudCount = cloudUpdateCount - 1 // Update first data
-  dataCount = dataSaveCount - 1 // Record first data
 
   setSubscriber(localCli, localDataTopic, f)
 

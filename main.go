@@ -16,7 +16,12 @@ type config struct {
   Device string `json:"device"`
   Id string `json:"id"`
   Key string `json:"key"`
+  Interval int `json:interval` // Update per interval * 5min
   localFile string
+}
+
+type devConf struct {
+  Count int // Interval check
 }
 
 const (
@@ -25,6 +30,7 @@ const (
 
 var (
   configMaps map[string]config
+  devConfMaps map[string]devConf
   mainChan chan string
   // Flag for argument input
   configDir = flag.String("config", "./config.json", "dir to config file")
@@ -54,7 +60,7 @@ func writeData(data string) {
     buffer.WriteString(s[i])
   }
   buffer.WriteString("\n")
-  fmt.Printf("Write: %s", buffer.String())
+  fmt.Printf("Write file %s: %s", fname, buffer.String())
   // Write incoming data to file
   if f, err := os.OpenFile(fname, os.O_APPEND|os.O_WRONLY, 0600); err != nil {
     check(err)
@@ -104,9 +110,22 @@ func setConfigMaps(file string) map[string]config {
   return maps
 }
 
+func setDevConfMaps(m map[string]config) map[string]devConf {
+  var c devConf
+  maps := make(map[string]devConf)
+
+  for k, v := range m {
+    c.Count = v.Interval - 1 // Update first data
+    maps[k] = c
+  }
+
+  return maps
+}
+
 func main() {
   mainChan = make(chan string)
   configMaps = setConfigMaps(*configDir)
+  devConfMaps = setDevConfMaps(configMaps)
 
   fmt.Printf("emc service start, version: %s\n", version)
 
