@@ -2,11 +2,13 @@
   "device": "EMC00",
   "id": "xxxxx",
   "key": "xxxxx",
-  "Interval": 2
+  "interval": 2,
+  "sensors": 7
 }
 {
   "device": "EMC01",
   "id": "xxxxx",
   "key": "xxxxx",
-  "Interval": 2
+  "interval": 2,
+  "sensors": 8
 }

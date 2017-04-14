@@ -20,6 +20,8 @@ const (
 
 var (
   mqttChan chan string
+  // Temp, PH, DO, EC enabled bit
+  sensors = [...]int {1 << 0, 1 << 1, 1 << 2, 1 << 3}
 )
 
 // Define a function for the default message handler
@@ -31,7 +33,8 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
   s := strings.Split(buffer.String(), ",")
 
   // Check the device is existed in config
-  if _, ok := configMaps[s[0]]; !ok {
+  c, ok := configMaps[s[0]]
+  if !ok {
     fmt.Printf("Device: %s is not found!!\n", s[0])
     return
   }
@@ -41,7 +44,20 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
   m.Count++
 
   // Update data to cloud and save data to file once meet the limit
-  if (m.Count == configMaps[s[0]].Interval) {
+  if m.Count == c.Interval {
+    // Check enabled sensors
+    for i, v := range sensors {
+      // Skip device name
+      if (c.Sensors & v) == 0 {s[i + 1] = "0"}
+    }
+
+    // Re-construct data string
+    buffer.Reset()
+    for i, v := range s {
+      if i != 0 {buffer.WriteString(",")}
+      buffer.WriteString(v)
+    }
+
     mqttChan <- buffer.String()
     mainChan <- buffer.String()
     m.Count = 0
@@ -95,9 +111,10 @@ func setPublisher(c MQTT.Client, msg string) {
   for i := range s {
     if (i == 0) {continue} // Skip device name
     if (s[i] != "0") { // Skip zero value
+      if buf.Len() > 0 {buf.WriteString("&")}
+      println(buf.Len())
       tmp := fmt.Sprintf("field%d=%s", i, s[i])
       buf.WriteString(tmp)
-      if i != cap(s) - 1 {buf.WriteString("&")}
     }
   }
 

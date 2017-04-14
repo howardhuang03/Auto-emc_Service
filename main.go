@@ -17,6 +17,7 @@ type config struct {
   Id string `json:"id"`
   Key string `json:"key"`
   Interval int `json:interval` // Update per interval * 5min
+  Sensors int `json:sensors`
   localFile string
 }
 
