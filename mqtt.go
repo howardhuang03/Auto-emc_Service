@@ -20,8 +20,6 @@ const (
 
 var (
   mqttChan chan string
-  // Temp, PH, DO, EC enabled bit
-  sensors = [...]int {1 << 0, 1 << 1, 1 << 2, 1 << 3}
 )
 
 // Define a function for the default message handler
@@ -45,20 +43,30 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 
   // Update data to cloud and save data to file once meet the limit
   if m.Count == c.Interval {
-    // Check enabled sensors
-    for i, v := range sensors {
-      // Skip device name
-      if (c.Sensors & v) == 0 {s[i + 1] = "0"}
+    // Check enabled sensor mapping
+    var index uint
+    var mapping = c.Sensors
+    if (c.Sensors > 15) { mapping = (mapping >> 4) }
+    for index = 0; index < 4; index++ { // Skip device name
+      if (mapping & (1 << index)) == 0 { s[index + 1] = "0" }
     }
 
-    // Re-construct data string
+    // Build string for thingspeak
+    buffer.Reset()
+    for i, v := range s {
+      if i != 0 {buffer.WriteString(",")}
+      // Sensors > 15 means we want to use field5 ~ field8 on thingspeak
+      if (c.Sensors > 15 && i == 1) { buffer.WriteString("0,0,0,0,") }
+      buffer.WriteString(v)
+    }
+    mqttChan <- buffer.String()
+
+    // Build string for file writing
     buffer.Reset()
     for i, v := range s {
       if i != 0 {buffer.WriteString(",")}
       buffer.WriteString(v)
     }
-
-    mqttChan <- buffer.String()
     mainChan <- buffer.String()
     m.Count = 0
   }
@@ -108,12 +116,10 @@ func setPublisher(c MQTT.Client, msg string) {
   // Build thingspeak data string
   s := strings.Split(msg, ",")
   topic := setTopic(configMaps[s[0]].Id, configMaps[s[0]].Key)
-  for i := range s {
-    if (i == 0) {continue} // Skip device name
-    if (s[i] != "0") { // Skip zero value
+  for i, v := range s {
+    if (i > 0 && v != "0") { // Skip zero value & device name
       if buf.Len() > 0 {buf.WriteString("&")}
-      println(buf.Len())
-      tmp := fmt.Sprintf("field%d=%s", i, s[i])
+      tmp := fmt.Sprintf("field%d=%s", i, v)
       buf.WriteString(tmp)
     }
   }
