@@ -2,3 +2,4 @@
 *.csv
 server*
 *.json
+auto-emc-go
