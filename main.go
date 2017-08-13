@@ -34,7 +34,7 @@ func filePrefix() string {
 func writeData(data string) {
 	var buffer bytes.Buffer
 	s := strings.Split(data, ",")
-	fname := configMaps[s[0]].localFile
+	fname := monitorMap[s[0]].localFile
 	// Build data string
 	buffer.WriteString(filePrefix())
 	for i := range s {
@@ -63,7 +63,8 @@ func main() {
 
 	fname := "tmp" // FIXME
 	go httpHnadler(fname)
-	go mqttService()
+	go buildConfig(*configDir)
+	go buildMonitor()
 
 	for {
 		writeData(<-mainChan)

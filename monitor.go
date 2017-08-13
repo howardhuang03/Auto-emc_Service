@@ -2,13 +2,9 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
@@ -23,19 +19,9 @@ const (
 )
 
 var (
-	configMaps  map[string]config
 	devConfMaps map[string]devConf
-	mqttChan    chan string
+	monitorChan chan string
 )
-
-type config struct {
-	Device    string `json:"device"`
-	Id        string `json:"id"`
-	Key       string `json:"key"`
-	Interval  int    `json:interval` // Update per interval * 5min
-	Sensors   int    `json:sensors`
-	localFile string
-}
 
 type devConf struct {
 	Count int // Interval check
@@ -50,7 +36,7 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	s := strings.Split(buffer.String(), ",")
 
 	// Check the device is existed in config
-	c, ok := configMaps[s[0]]
+	c, ok := monitorMap[s[0]]
 	if !ok {
 		fmt.Printf("Device: %s is not found!!\n", s[0])
 		return
@@ -86,7 +72,7 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 			}
 			buffer.WriteString(v)
 		}
-		mqttChan <- buffer.String()
+		monitorChan <- buffer.String()
 
 		// Build string for file writing
 		buffer.Reset()
@@ -144,7 +130,7 @@ func setPublisher(c MQTT.Client, msg string) {
 
 	// Build thingspeak data string
 	s := strings.Split(msg, ",")
-	topic := setTopic(configMaps[s[0]].Id, configMaps[s[0]].Key)
+	topic := setTopic(monitorMap[s[0]].Id, monitorMap[s[0]].Key)
 	for i, v := range s {
 		if i > 0 && v != "0" { // Skip zero value & device name
 			if buf.Len() > 0 {
@@ -166,45 +152,7 @@ func setTopic(id string, key string) string {
 	return s
 }
 
-func setConfigMaps(file string) map[string]config {
-	var c config
-	maps := make(map[string]config)
-
-	jsonData, e := ioutil.ReadFile(file)
-	if e != nil {
-		check(e)
-		os.Exit(1)
-	}
-
-	jsonParser := json.NewDecoder(bytes.NewReader(jsonData))
-	for {
-		if err := jsonParser.Decode(&c); err == io.EOF {
-			break
-		} else if err != nil {
-			check(e)
-		}
-
-		if err := os.MkdirAll(c.Device, 0777); err != nil {
-			fmt.Println("Mkdir %s failed: %v", c.Device, err)
-		}
-
-		fname := fmt.Sprintf("%s/%s.csv", c.Device, time.Now().Format("20060102"))
-		file, err := os.Create(fname)
-		if err != nil {
-			fmt.Println("create %s fail, err: %v", fname, err)
-		}
-
-		c.localFile = fname
-		defer file.Close()
-
-		maps[c.Device] = c
-	}
-
-	fmt.Println("maps:", maps)
-	return maps
-}
-
-func setDevConfMaps(m map[string]config) map[string]devConf {
+func setDevConfMaps(m map[string]monitor) map[string]devConf {
 	var c devConf
 	maps := make(map[string]devConf)
 
@@ -216,18 +164,17 @@ func setDevConfMaps(m map[string]config) map[string]devConf {
 	return maps
 }
 
-func mqttService() {
+func buildMonitor() {
 	// Initialize related config maps
-	configMaps = setConfigMaps(*configDir)
-	devConfMaps = setDevConfMaps(configMaps)
+	devConfMaps = setDevConfMaps(monitorMap)
 	// Initialize mqtt client
-	mqttChan = make(chan string)
+	monitorChan = make(chan string)
 	cloudCli := mqttClientMaker(cloudUrl, cloudId)
 	localCli := mqttClientMaker(localUrl, localId)
 
 	setSubscriber(localCli, localDataTopic, f)
 
 	for {
-		setPublisher(cloudCli, <-mqttChan)
+		setPublisher(cloudCli, <-monitorChan)
 	}
 }
