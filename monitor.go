@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	cloudUrl       = "tcp://mqtt.thingspeak.com:1883"
-	cloudId        = "go-cloud"
+	monitorUrl     = "tcp://mqtt.thingspeak.com:1883"
+	monitorId      = "go-thingspeak"
 	localUrl       = "tcp://127.0.0.1:1883"
 	localId        = "go-local"
 	localDataTopic = "channels/local/data"
@@ -169,8 +169,8 @@ func buildMonitor() {
 	devConfMaps = setDevConfMaps(monitorMap)
 	// Initialize mqtt client
 	monitorChan = make(chan string)
-	cloudCli := mqttClientMaker(cloudUrl, cloudId)
-	localCli := mqttClientMaker(localUrl, localId)
+	cloudCli := mqttClientMaker(monitorUrl, monitorId)
+	localCli := mqttClientMaker(localUrl, monitorId)
 
 	setSubscriber(localCli, localDataTopic, f)
 

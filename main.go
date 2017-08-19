@@ -65,6 +65,7 @@ func main() {
 	go httpHnadler(fname)
 	go buildConfig(*configDir)
 	go buildMonitor()
+	go buildController()
 
 	for {
 		writeData(<-mainChan)
