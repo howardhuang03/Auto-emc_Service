@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
+	"log"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
@@ -16,7 +17,10 @@ var (
 )
 
 var mockerHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	fmt.Printf("Received: TOPIC: %s, MSG: %s\n", msg.Topic(), msg.Payload())
+	var buf bytes.Buffer
+	buf.Write(msg.Payload())
+
+	log.Println("Mocker received from local: TOPIC:", msg.Topic(), " MSG:", buf.String())
 
 	mockerChan <- "mocker responsed."
 }
@@ -30,6 +34,6 @@ func buildMocker() {
 	setSubscriber(localCli, localCmdTopic, mockerHandler)
 
 	for {
-		publish(localCli, localResponseTopic, <-mockerChan)
+		publish(localCli, "mocker", "local", localResponseTopic, <-mockerChan)
 	}
 }

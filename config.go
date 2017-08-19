@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"time"
 )
@@ -42,13 +43,13 @@ func buildMonitorMap(Config config) map[string]monitor {
 	for i := 0; i < len(Config.Monitors); i++ {
 		m := Config.Monitors[i]
 		if err := os.MkdirAll(m.Device, 0777); err != nil {
-			fmt.Println("Mkdir %s failed: %v", m.Device, err)
+			log.Fatalln("Mkdir %s failed: %v", m.Device, err)
 		}
 
 		fname := fmt.Sprintf("%s/%s.csv", m.Device, time.Now().Format("20060102"))
 		file, err := os.Create(fname)
 		if err != nil {
-			fmt.Println("create %s fail, err: %v", fname, err)
+			log.Fatalln("create %s fail, err: %v", fname, err)
 		}
 
 		m.localFile = fname
@@ -57,7 +58,7 @@ func buildMonitorMap(Config config) map[string]monitor {
 		mmap[m.Device] = m
 	}
 
-	fmt.Println("monitorMap:", mmap)
+	log.Println("monitorMap:", mmap)
 	return mmap
 }
 
@@ -68,7 +69,7 @@ func buildControllerMap(Config config) map[string]controller {
 		cmap[c.Device] = c
 	}
 
-	fmt.Println("controllerMap:", cmap)
+	log.Println("controllerMap:", cmap)
 	return cmap
 }
 

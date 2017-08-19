@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
+	"log"
 	"strings"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
@@ -29,7 +29,7 @@ type devConf struct {
 
 // Define a function for the default message handler
 var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	fmt.Printf("Received: TOPIC: %s, MSG: %s\n", msg.Topic(), msg.Payload())
+	log.Println("Received: TOPIC:", msg.Topic(), "MSG:", msg.Payload())
 
 	var buffer bytes.Buffer
 	buffer.Write(msg.Payload())
@@ -38,7 +38,7 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	// Check the device is existed in config
 	c, ok := monitorMap[s[0]]
 	if !ok {
-		fmt.Printf("Device: %s is not found!!\n", s[0])
+		log.Println("Device:", s[0], "is not found!!")
 		return
 	}
 
@@ -96,12 +96,12 @@ func mqttClientMaker(url string, id string) MQTT.Client {
 
 	c := MQTT.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		fmt.Printf("mqtt client build fail, url: %s, id: %s\n", url, id)
-		fmt.Println(token.Error())
+		log.Println("mqtt client build fail, url: ", url, " id:", id)
+		log.Fatalln(token.Error())
 		// Return an empty client
 		c = nil
 	} else {
-		fmt.Printf("mqtt client build success, url: %s, id: %s\n", url, id)
+		log.Println("mqtt client build success, url:", url, ",id:", id)
 	}
 
 	return c
@@ -109,14 +109,13 @@ func mqttClientMaker(url string, id string) MQTT.Client {
 
 func setSubscriber(c MQTT.Client, topic string, f MQTT.MessageHandler) {
 	if c == nil {
-		fmt.Printf("Can't use empty client to create subscriber: %s\n", topic)
+		log.Println("Can't use empty client to create subscriber:", topic)
 		return
 	}
 
 	if token := c.Subscribe(topic, 0, f); token.Wait() && token.Error() != nil {
-		fmt.Printf("Create subscriber error, topic: %s\n", topic)
-		fmt.Println(token.Error())
-		os.Exit(1)
+		log.Println("Create subscriber error, topic:", topic)
+		log.Fatalln(token.Error())
 	}
 }
 
@@ -124,7 +123,7 @@ func setPublisher(c MQTT.Client, msg string) {
 	var buf bytes.Buffer
 
 	if c == nil {
-		fmt.Printf("Can't use empty client to send msg:%s to cloud\n", msg)
+		log.Println("Can't use empty client to send msg:", msg, " to cloud")
 		return
 	}
 
@@ -143,7 +142,7 @@ func setPublisher(c MQTT.Client, msg string) {
 
 	// Publish message
 	token := c.Publish(topic, 0, false, buf.String())
-	fmt.Printf("Pulished: TOPIC: %s, MSG: %s\n", topic, buf.String())
+	log.Println("Pulished: TOPIC:", topic, " MSG:", buf.String())
 	token.Wait()
 }
 

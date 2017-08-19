@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"log"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
@@ -19,31 +19,31 @@ var (
 )
 
 var eclipseHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	fmt.Printf("Eclipase Received: TOPIC: %s, MSG: %s\n", msg.Topic(), msg.Payload())
-
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
+
+	log.Println("Controller received from eclipse: TOPIC:", msg.Topic(), "MSG:", buf.String())
+
 	controllerChan <- buf.String()
 }
 
 var localHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	fmt.Printf("Local Received: TOPIC: %s, MSG: %s\n", msg.Topic(), msg.Payload())
-
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
+
+	log.Println("Controller received from local: TOPIC:", msg.Topic(), "MSG:", buf.String())
+
 	responseChan <- buf.String()
 }
 
-func publish(c MQTT.Client, topic string, msg string) {
+func publish(c MQTT.Client, target string, broker string, topic string, msg string) {
 	if c == nil {
-		fmt.Printf("Can't use empty client to send msg:%s to cloud\n", msg)
+		log.Println("Can't use empty client to send msg:", msg)
 		return
 	}
 
-	// Publish message
 	token := c.Publish(topic, 0, false, msg)
-
-	fmt.Printf("Pulished: TOPIC: %s, MSG: %s\n", topic, msg)
+	log.Println(target, "pulished to", broker, ", TOPIC:", topic, "MSG:", msg)
 	token.Wait()
 }
 
@@ -61,7 +61,7 @@ func buildController() {
 	setSubscriber(localCli, localResponseTopic, localHandler)
 
 	for {
-		publish(localCli, localCmdTopic, <-controllerChan)
-		publish(cloudCli, localResponseTopic, <-responseChan)
+		publish(localCli, "Controller", "Eclipse", localCmdTopic, <-controllerChan)
+		publish(cloudCli, "Controller", "Local", localResponseTopic, <-responseChan)
 	}
 }

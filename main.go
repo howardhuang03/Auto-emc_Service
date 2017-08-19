@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -45,7 +45,7 @@ func writeData(data string) {
 		buffer.WriteString(s[i])
 	}
 	buffer.WriteString("\n")
-	fmt.Printf("Write file %s: %s", fname, buffer.String())
+	log.Println("Write file", fname, ":", buffer.String())
 	// Write incoming data to file
 	if f, err := os.OpenFile(fname, os.O_APPEND|os.O_WRONLY, 0600); err != nil {
 		check(err)
@@ -59,7 +59,7 @@ func writeData(data string) {
 
 func main() {
 	mainChan = make(chan string)
-	fmt.Printf("emc service start, version: %s\n", version)
+	log.Println("emc service start, version:", version)
 
 	fname := "tmp" // FIXME
 	go httpHnadler(fname)
