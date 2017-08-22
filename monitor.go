@@ -29,7 +29,10 @@ type devConf struct {
 
 // Define a function for the default message handler
 var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	log.Println("Received: TOPIC:", msg.Topic(), "MSG:", msg.Payload())
+	var buf bytes.Buffer
+	buf.Write(msg.Payload())
+
+	log.Println("Received: TOPIC:", msg.Topic(), "MSG:", buf.String())
 
 	var buffer bytes.Buffer
 	buffer.Write(msg.Payload())

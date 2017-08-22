@@ -34,6 +34,6 @@ func buildMocker() {
 	setSubscriber(localCli, localCmdTopic, mockerHandler)
 
 	for {
-		publish(localCli, "mocker", "local", localResponseTopic, <-mockerChan)
+		publish(localCli, "Mocker", "local", localResponseTopic, <-mockerChan)
 	}
 }

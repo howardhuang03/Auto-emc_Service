@@ -27,7 +27,7 @@ var eclipseHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Messa
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
 
-	log.Println("Controller received from eclipse: TOPIC:", msg.Topic(), "MSG:", buf.String())
+	log.Println("Controller received from eclipse: TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
 
 	controllerChan <- buf.String()
 }
@@ -36,25 +36,25 @@ var localHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
 
-	log.Println("Controller received from local: TOPIC:", msg.Topic(), "MSG:", buf.String())
+	log.Println("Controller received from local: TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
 
 	responseChan <- buf.String()
 }
 
 func publish(c MQTT.Client, target string, broker string, topic string, msg string) {
 	if c == nil {
-		log.Println("Can't use empty client to send msg:", msg)
+		log.Println("Can't use empty client to send msg: " + msg)
 		return
 	}
 
 	token := c.Publish(topic, 0, false, msg)
-	log.Println(target, "pulished to", broker, ", TOPIC:", topic, "MSG:", msg)
+	log.Println(target + " pulished to " + broker + ", TOPIC:" + topic + ", MSG: " + msg)
 	token.Wait()
 }
 
 func setTimer(target time.Time, now time.Time, dev string, relay string, action string, t timer) {
 	log.Println("Set timer: ")
-	log.Println(target.String()+"device: "+dev+", Interval:", t.Interval)
+	log.Println(target.String()+", device: "+dev+", Interval:", t.Interval)
 	ti := time.NewTimer(target.Sub(now))
 	<-ti.C
 	log.Println("Timer expired, check dev status first")
