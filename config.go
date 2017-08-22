@@ -28,9 +28,13 @@ type timer struct {
 	Interval int    `json:"interval"`
 }
 
+type relay struct {
+	Timer []timer `json:"timer"`
+}
+
 type controller struct {
 	Device string  `json:"device"`
-	Timer  []timer `json:"timer"`
+	Relay  []relay `json:"relay"`
 }
 
 type config struct {

@@ -19,7 +19,7 @@ const (
 var (
 	controllerChan chan string
 	responseChan   chan string
-	timerChan      chan bool
+	timerChan      chan string
 	ti             time.Timer
 )
 
@@ -54,7 +54,7 @@ func publish(c MQTT.Client, target string, broker string, topic string, msg stri
 
 func setTimer(target time.Time, now time.Time, dev string, relay string, action string, t timer) {
 	log.Println("Set timer: ")
-	log.Println(target.String()+", device: "+dev+", Interval:", t.Interval)
+	log.Println(target.String()+", device: "+dev+", relay:"+relay+", Interval:", t.Interval)
 	ti := time.NewTimer(target.Sub(now))
 	<-ti.C
 	log.Println("Timer expired, check dev status first")
@@ -70,27 +70,40 @@ func setTimer(target time.Time, now time.Time, dev string, relay string, action 
 	} else {
 		log.Println("Skip operation since device is already 'ON'")
 	}
-	timerChan <- true
+	timerChan <- fmt.Sprintf("%s,%s", dev, relay)
 }
 
-func initTimer() {
-	for k, v := range controllerMap {
+func checkTimer(s string) {
+	for k, c := range controllerMap {
 		now := time.Now()
 		date := now
-		for i, t := range v.Timer {
-			tt, _ := time.ParseInLocation("2006-01-02 15:04:05", date.Format("2006-01-02 ")+t.Time, time.Local)
+		dev := k
+		for i, r := range c.Relay {
+			relay := fmt.Sprint(i + 1)
 
-			// Check next timer
-			if now.Before(tt) {
-				go setTimer(tt, now, k, "1", "ON", t)
-				break
+			// Check which timer should be enabled
+			// Init means to initialize all timer
+			ss := fmt.Sprintf("%s,%s", dev, relay)
+			if s != "init" && s != ss {
+				continue
 			}
 
-			// Shift to the fist timer at next day once tiemr not found
-			if i+1 == len(v.Timer) {
-				date = date.AddDate(0, 0, 1)
-				tt, _ = time.ParseInLocation("2006-01-02 15:04:05", date.Format("2006-01-02 ")+v.Timer[0].Time, time.Local)
-				go setTimer(tt, now, k, "1", "ON", t)
+			// Set correct timer
+			for j, t := range r.Timer {
+				tt, _ := time.ParseInLocation("2006-01-02 15:04:05", date.Format("2006-01-02 ")+t.Time, time.Local)
+
+				// Check next timer
+				if now.Before(tt) {
+					go setTimer(tt, now, dev, relay, "ON", t)
+					break
+				}
+
+				// Shift to the fist timer at next day once tiemr not found
+				if j+1 == len(r.Timer) {
+					date = date.AddDate(0, 0, 1)
+					tt, _ = time.ParseInLocation("2006-01-02 15:04:05", date.Format("2006-01-02 ")+r.Timer[0].Time, time.Local)
+					go setTimer(tt, now, k, "1", "ON", t)
+				}
 			}
 		}
 	}
@@ -100,7 +113,7 @@ func buildController() {
 	// Initialize mqtt client
 	controllerChan = make(chan string)
 	responseChan = make(chan string)
-	timerChan = make(chan bool)
+	timerChan = make(chan string)
 	cloudCli := mqttClientMaker(controllerUrl, controllerId)
 	localCli := mqttClientMaker(localUrl, controllerId)
 
@@ -111,7 +124,7 @@ func buildController() {
 	setSubscriber(localCli, localResponseTopic, localHandler)
 
 	// Initialize first timer
-	initTimer()
+	checkTimer("init")
 
 	for {
 		select {
@@ -119,8 +132,8 @@ func buildController() {
 			publish(localCli, "Controller", "local", localCmdTopic, msgC)
 		case msgR := <-responseChan:
 			publish(cloudCli, "Controller", "eclipse", localResponseTopic, msgR)
-		case <-timerChan:
-			initTimer()
+		case s := <-timerChan:
+			checkTimer(s)
 		}
 	}
 }
