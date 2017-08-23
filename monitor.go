@@ -12,7 +12,7 @@ import (
 
 const (
 	monitorUrl     = "tcp://mqtt.thingspeak.com:1883"
-	monitorId      = "go-thingspeak-test"
+	monitorId      = "go-thingspeak"
 	localUrl       = "tcp://127.0.0.1:1883"
 	localId        = "go-local"
 	localDataTopic = "channels/local/data"
@@ -118,6 +118,11 @@ func setSubscriber(c MQTT.Client, topic string, f MQTT.MessageHandler) {
 	if c == nil {
 		log.Println("Can't use empty client to create subscriber: " + topic)
 		return
+	}
+
+	if token := c.Unsubscribe(topic); token.Wait() && token.Error() != nil {
+		log.Println("Unsubscribe error, topic:" + topic)
+		log.Fatalln(token.Error())
 	}
 
 	if token := c.Subscribe(topic, 0, f); token.Wait() && token.Error() != nil {

@@ -12,7 +12,7 @@ import (
 
 const (
 	controllerUrl      = "tcp://iot.eclipse.org:1883"
-	controllerId       = "go-controller-test"
+	controllerId       = "go-controller"
 	localResponseTopic = "channels/local/response"
 )
 
@@ -27,7 +27,7 @@ var eclipseHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Messa
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
 
-	log.Println("Controller received from eclipse, TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
+	log.Println("Controller received from eclipse, TOPIC: " + msg.Topic() + ", MSG: " + buf.String())
 
 	controllerChan <- buf.String()
 }
@@ -36,7 +36,7 @@ var localHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
 
-	log.Println("Controller received from local, TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
+	log.Println("Controller received from local, TOPIC: " + msg.Topic() + ", MSG: " + buf.String())
 
 	responseChan <- buf.String()
 }
@@ -54,7 +54,7 @@ func publish(c MQTT.Client, target string, broker string, topic string, msg stri
 
 func setTimer(target time.Time, now time.Time, dev string, relay string, action string, t timer) {
 	log.Println("Set timer: ")
-	log.Println(target.String() + ", device: " + dev + ", relay:" + relay + ", Interval: " + string(t.Interval))
+	log.Println(target.String() + ", device: " + dev + ", relay:" + relay + ", Interval: " + fmt.Sprintf("%d", t.Interval) + " mins")
 	ti := time.NewTimer(target.Sub(now))
 	<-ti.C
 	log.Println("Timer expired, check dev status first")
@@ -116,6 +116,7 @@ func buildController() {
 	timerChan = make(chan string)
 	cloudCli := mqttClientMaker(controllerUrl, controllerId, eclipseHandler)
 	localCli := mqttClientMaker(localUrl, controllerId, localHandler)
+	ticker := time.NewTicker(time.Minute * 10)
 
 	// Subscribe to eclipse mqtt
 	setSubscriber(cloudCli, localCmdTopic, eclipseHandler)
@@ -134,6 +135,9 @@ func buildController() {
 			publish(cloudCli, "Controller", "eclipse", localResponseTopic, msgR)
 		case s := <-timerChan:
 			checkTimer(s)
+		case <-ticker.C:
+			log.Println("Subscribe eclipse topic: " + localCmdTopic)
+			setSubscriber(cloudCli, localCmdTopic, eclipseHandler)
 		}
 	}
 }
