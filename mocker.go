@@ -28,7 +28,7 @@ var mockerHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Messag
 func buildMocker() {
 	// Initialize mqtt client
 	mockerChan = make(chan string)
-	localCli := mqttClientMaker(localUrl, mockerId)
+	localCli := mqttClientMaker(localUrl, mockerId, mockerHandler)
 
 	// Subscribe to local mqtt
 	setSubscriber(localCli, localCmdTopic, mockerHandler)

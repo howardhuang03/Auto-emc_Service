@@ -12,7 +12,7 @@ import (
 
 const (
 	controllerUrl      = "tcp://iot.eclipse.org:1883"
-	controllerId       = "go-controller"
+	controllerId       = "go-controller-test"
 	localResponseTopic = "channels/local/response"
 )
 
@@ -27,7 +27,7 @@ var eclipseHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Messa
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
 
-	log.Println("Controller received from eclipse: TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
+	log.Println("Controller received from eclipse, TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
 
 	controllerChan <- buf.String()
 }
@@ -36,7 +36,7 @@ var localHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
 
-	log.Println("Controller received from local: TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
+	log.Println("Controller received from local, TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
 
 	responseChan <- buf.String()
 }
@@ -48,13 +48,13 @@ func publish(c MQTT.Client, target string, broker string, topic string, msg stri
 	}
 
 	token := c.Publish(topic, 0, false, msg)
-	log.Println(target + " pulished to " + broker + ", TOPIC:" + topic + ", MSG: " + msg)
+	log.Println(target + " pulished to " + broker + ", TOPIC: " + topic + ", MSG: " + msg)
 	token.Wait()
 }
 
 func setTimer(target time.Time, now time.Time, dev string, relay string, action string, t timer) {
 	log.Println("Set timer: ")
-	log.Println(target.String()+", device: "+dev+", relay:"+relay+", Interval:", t.Interval)
+	log.Println(target.String() + ", device: " + dev + ", relay:" + relay + ", Interval: " + string(t.Interval))
 	ti := time.NewTimer(target.Sub(now))
 	<-ti.C
 	log.Println("Timer expired, check dev status first")
@@ -64,7 +64,7 @@ func setTimer(target time.Time, now time.Time, dev string, relay string, action 
 	controllerChan <- status
 	result := <-responseChan
 
-	if strings.Contains(result, "OFF") {
+	if strings.Contains(result, dev) && strings.Contains(result, relay) && strings.Contains(result, "OFF") {
 		msg := fmt.Sprintf("%s,%s,%s,%d", dev, relay, action, t.Interval)
 		controllerChan <- msg
 	} else {
@@ -114,8 +114,8 @@ func buildController() {
 	controllerChan = make(chan string)
 	responseChan = make(chan string)
 	timerChan = make(chan string)
-	cloudCli := mqttClientMaker(controllerUrl, controllerId)
-	localCli := mqttClientMaker(localUrl, controllerId)
+	cloudCli := mqttClientMaker(controllerUrl, controllerId, eclipseHandler)
+	localCli := mqttClientMaker(localUrl, controllerId, localHandler)
 
 	// Subscribe to eclipse mqtt
 	setSubscriber(cloudCli, localCmdTopic, eclipseHandler)

@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
 const (
 	monitorUrl     = "tcp://mqtt.thingspeak.com:1883"
-	monitorId      = "go-thingspeak"
+	monitorId      = "go-thingspeak-test"
 	localUrl       = "tcp://127.0.0.1:1883"
 	localId        = "go-local"
 	localDataTopic = "channels/local/data"
@@ -32,7 +33,7 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	var buf bytes.Buffer
 	buf.Write(msg.Payload())
 
-	log.Println("Received: TOPIC:", msg.Topic(), "MSG:", buf.String())
+	log.Println("Monitor received from local, TOPIC: " + msg.Topic() + ", MSG:" + buf.String())
 
 	var buffer bytes.Buffer
 	buffer.Write(msg.Payload())
@@ -41,7 +42,7 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	// Check the device is existed in config
 	c, ok := monitorMap[s[0]]
 	if !ok {
-		log.Println("Device:", s[0], "is not found!!")
+		log.Println("Device: " + s[0] + " is not found!!")
 		return
 	}
 
@@ -92,19 +93,22 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	devConfMaps[s[0]] = m
 }
 
-func mqttClientMaker(url string, id string) MQTT.Client {
+func mqttClientMaker(url string, id string, h MQTT.MessageHandler) MQTT.Client {
 	opts := MQTT.NewClientOptions().AddBroker(url)
 	opts.SetClientID(id)
-	opts.SetDefaultPublishHandler(f)
+	opts.SetDefaultPublishHandler(h)
+	opts.SetKeepAlive(time.Hour * 6)
+	opts.SetConnectTimeout(time.Minute * 1)
+	opts.SetAutoReconnect(true).SetCleanSession(true)
 
 	c := MQTT.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		log.Println("mqtt client build fail, url: ", url, " id:", id)
+		log.Println("mqtt client build fail, url: " + url + " id: " + id)
 		log.Fatalln(token.Error())
 		// Return an empty client
 		c = nil
 	} else {
-		log.Println("mqtt client build success, url:", url, ",id:", id)
+		log.Println("mqtt client build success, url:" + url + ",id: " + id)
 	}
 
 	return c
@@ -112,12 +116,12 @@ func mqttClientMaker(url string, id string) MQTT.Client {
 
 func setSubscriber(c MQTT.Client, topic string, f MQTT.MessageHandler) {
 	if c == nil {
-		log.Println("Can't use empty client to create subscriber:", topic)
+		log.Println("Can't use empty client to create subscriber: " + topic)
 		return
 	}
 
 	if token := c.Subscribe(topic, 0, f); token.Wait() && token.Error() != nil {
-		log.Println("Create subscriber error, topic:", topic)
+		log.Println("Create subscriber error, topic:" + topic)
 		log.Fatalln(token.Error())
 	}
 }
@@ -126,7 +130,7 @@ func setPublisher(c MQTT.Client, msg string) {
 	var buf bytes.Buffer
 
 	if c == nil {
-		log.Println("Can't use empty client to send msg:", msg, " to cloud")
+		log.Println("Can't use empty client to send msg: '" + msg + "' to cloud")
 		return
 	}
 
@@ -144,9 +148,7 @@ func setPublisher(c MQTT.Client, msg string) {
 	}
 
 	// Publish message
-	token := c.Publish(topic, 0, false, buf.String())
-	log.Println("Pulished: TOPIC:", topic, " MSG:", buf.String())
-	token.Wait()
+	publish(c, "Monitor", "thingspeak", topic, buf.String())
 }
 
 func setTopic(id string, key string) string {
@@ -171,8 +173,8 @@ func buildMonitor() {
 	devConfMaps = setDevConfMaps(monitorMap)
 	// Initialize mqtt client
 	monitorChan = make(chan string)
-	cloudCli := mqttClientMaker(monitorUrl, monitorId)
-	localCli := mqttClientMaker(localUrl, monitorId)
+	cloudCli := mqttClientMaker(monitorUrl, monitorId, f)
+	localCli := mqttClientMaker(localUrl, monitorId, f)
 
 	setSubscriber(localCli, localDataTopic, f)
 
