@@ -11,9 +11,11 @@ import (
 )
 
 const (
-	controllerUrl      = "tcp://iot.eclipse.org:1883"
-	controllerId       = "go-controller"
-	localResponseTopic = "channels/local/response"
+	controllerUrl        = "tcp://iot.eclipse.org:1883"
+	controllerId         = "go-controller"
+	localResponseTopic   = "channels/local/response"
+	eclipseCmdTopic      = "channels/eclipse/cmd"
+	eclipseResponseTopic = "channels/eclipse/response"
 )
 
 var (
@@ -119,7 +121,7 @@ func buildController() {
 	ticker := time.NewTicker(time.Minute * 10)
 
 	// Subscribe to eclipse mqtt
-	setSubscriber(cloudCli, localCmdTopic, eclipseHandler)
+	setSubscriber(cloudCli, eclipseCmdTopic, eclipseHandler)
 
 	// Subscribe to local mqtt
 	setSubscriber(localCli, localResponseTopic, localHandler)
@@ -132,12 +134,12 @@ func buildController() {
 		case msgC := <-controllerChan:
 			publish(localCli, "Controller", "local", localCmdTopic, msgC)
 		case msgR := <-responseChan:
-			publish(cloudCli, "Controller", "eclipse", localResponseTopic, msgR)
+			publish(cloudCli, "Controller", "eclipse", eclipseResponseTopic, msgR)
 		case s := <-timerChan:
 			checkTimer(s)
 		case <-ticker.C:
-			log.Println("Subscribe eclipse topic: " + localCmdTopic)
-			setSubscriber(cloudCli, localCmdTopic, eclipseHandler)
+			log.Println("Re-subscribe eclipse topic: " + eclipseCmdTopic)
+			setSubscriber(cloudCli, eclipseCmdTopic, eclipseHandler)
 		}
 	}
 }
