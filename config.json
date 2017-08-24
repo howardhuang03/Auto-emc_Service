@@ -1,14 +1,37 @@
 {
-  "device": "EMC00",
-  "id": "xxxxx",
-  "key": "xxxxx",
-  "interval": 2,
-  "sensors": 7
-}
-{
-  "device": "EMC01",
-  "id": "xxxxx",
-  "key": "xxxxx",
-  "interval": 2,
-  "sensors": 8
+  "monitor": [
+    {
+      "device": "EMC00",
+      "id": "xxxxx",
+      "key": "xxxxx",
+      "interval": 2,
+      "sensors": 15
+    },
+    {
+      "device": "EMC01",
+      "id": "xxxxx",
+      "key": "xxxxx",
+      "interval": 2,
+      "sensors": 112
+    }
+  ],
+  "controller": [
+    {
+      "device": "EMC20",
+      "relay": [
+        {
+          "timer": [
+             {
+                "time": "01:00:00",
+                "interval": 30
+             },
+             {
+                "time": "04:00:00",
+                "interval": 30
+             }
+          ]
+        }
+      ]
+    }
+  ]
 }
