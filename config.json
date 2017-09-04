@@ -1,4 +1,9 @@
 {
+  "slack": {
+    "token": "xxxx",
+    "channelId": "xxxx",
+    "botId": "xxxx"
+  },
   "monitor": [
     {
       "device": "EMC00",

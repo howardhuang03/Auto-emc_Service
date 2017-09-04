@@ -12,6 +12,7 @@ import (
 var (
 	monitorMap    map[string]monitor
 	controllerMap map[string]controller
+	slackConfig   slackbot
 )
 
 type monitor struct {
@@ -37,9 +38,16 @@ type controller struct {
 	Relay  []relay `json:"relay"`
 }
 
+type slackbot struct {
+	Token     string `json:"token"`
+	ChannelId string `json:"channelId"`
+	BotId     string `json:"botId"`
+}
+
 type config struct {
 	Monitors    []monitor    `json:"monitor"`
 	Controllers []controller `json:"controller"`
+	Slackbot    slackbot     `json:"slack"`
 }
 
 func buildMonitorMap(Config config) map[string]monitor {
@@ -77,6 +85,12 @@ func buildControllerMap(Config config) map[string]controller {
 	return cmap
 }
 
+func buildSlackConfig(c config) slackbot {
+	sb := c.Slackbot
+	log.Println("SlackConfig:", sb)
+	return sb
+}
+
 func buildConfig(file string) {
 	var c config
 
@@ -90,4 +104,5 @@ func buildConfig(file string) {
 
 	monitorMap = buildMonitorMap(c)
 	controllerMap = buildControllerMap(c)
+	slackConfig = buildSlackConfig(c)
 }
