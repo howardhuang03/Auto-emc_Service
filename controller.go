@@ -11,11 +11,8 @@ import (
 )
 
 const (
-	controllerUrl        = "tcp://iot.eclipse.org:1883"
-	controllerId         = "go-controller"
-	localResponseTopic   = "channels/local/response"
-	eclipseCmdTopic      = "channels/eclipse/cmd"
-	eclipseResponseTopic = "channels/eclipse/response"
+	controllerId       = "go-controller"
+	localResponseTopic = "channels/local/response"
 )
 
 var (
@@ -24,15 +21,6 @@ var (
 	timerChan      chan string
 	ti             time.Timer
 )
-
-var eclipseHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	var buf bytes.Buffer
-	buf.Write(msg.Payload())
-
-	log.Println("Controller received from eclipse, TOPIC: " + msg.Topic() + ", MSG: " + buf.String())
-
-	controllerChan <- buf.String()
-}
 
 var localHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	var buf bytes.Buffer
@@ -116,12 +104,7 @@ func buildController() {
 	controllerChan = make(chan string)
 	responseChan = make(chan string)
 	timerChan = make(chan string)
-	cloudCli := mqttClientMaker(controllerUrl, controllerId, eclipseHandler)
 	localCli := mqttClientMaker(localUrl, controllerId, localHandler)
-	ticker := time.NewTicker(time.Minute * 10)
-
-	// Subscribe to eclipse mqtt
-	setSubscriber(cloudCli, eclipseCmdTopic, eclipseHandler)
 
 	// Subscribe to local mqtt
 	setSubscriber(localCli, localResponseTopic, localHandler)
@@ -134,13 +117,9 @@ func buildController() {
 		case msgC := <-controllerChan:
 			publish(localCli, "Controller", "local", localCmdTopic, msgC)
 		case msgR := <-responseChan:
-			publish(cloudCli, "Controller", "eclipse", eclipseResponseTopic, msgR)
 			slackChan <- msgR
 		case s := <-timerChan:
 			checkTimer(s)
-		case <-ticker.C:
-			log.Println("Re-subscribe eclipse topic: " + eclipseCmdTopic)
-			setSubscriber(cloudCli, eclipseCmdTopic, eclipseHandler)
 		}
 	}
 }
