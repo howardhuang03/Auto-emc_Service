@@ -66,6 +66,7 @@ func main() {
 	go buildConfig(*configDir)
 	go buildMonitor()
 	go buildController()
+	go buildSlackBot()
 
 	for {
 		writeData(<-mainChan)

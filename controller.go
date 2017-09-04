@@ -135,6 +135,7 @@ func buildController() {
 			publish(localCli, "Controller", "local", localCmdTopic, msgC)
 		case msgR := <-responseChan:
 			publish(cloudCli, "Controller", "eclipse", eclipseResponseTopic, msgR)
+			slackChan <- msgR
 		case s := <-timerChan:
 			checkTimer(s)
 		case <-ticker.C:
