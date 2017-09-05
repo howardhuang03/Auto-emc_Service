@@ -13,6 +13,7 @@ import (
 const (
 	controllerId       = "go-controller"
 	localResponseTopic = "channels/local/response"
+	timeout            = 1
 )
 
 var (
@@ -51,15 +52,30 @@ func setTimer(target time.Time, now time.Time, dev string, relay string, action 
 
 	// Check target device status first
 	status := fmt.Sprintf("%s,%s,%s", dev, relay, "status")
+	ti = time.NewTimer(timeout * time.Minute)
 	controllerChan <- status
-	result := <-responseChan
 
-	if strings.Contains(result, dev) && strings.Contains(result, relay) && strings.Contains(result, "OFF") {
-		msg := fmt.Sprintf("%s,%s,%s,%d", dev, relay, action, t.Interval)
-		controllerChan <- msg
-	} else {
-		log.Println("Skip operation since device is already 'ON'")
+loop:
+	for {
+		select {
+		case result := <-responseChan:
+			if strings.Contains(result, dev) && strings.Contains(result, relay) && strings.Contains(result, "OFF") {
+				msg := fmt.Sprintf("%s,%s,%s,%d", dev, relay, action, t.Interval)
+				controllerChan <- msg
+			} else {
+				log.Println("Skip operation since device is already 'ON'")
+			}
+			ti.Stop()
+			break loop
+		case <-ti.C:
+			msg := fmt.Sprintf("Device %s not responsed", dev)
+			log.Println(msg)
+			responseChan <- msg
+			break loop
+		}
 	}
+
+	// Trigger next timer
 	timerChan <- fmt.Sprintf("%s,%s", dev, relay)
 }
 
